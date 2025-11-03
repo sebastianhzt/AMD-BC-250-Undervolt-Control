@@ -10,5 +10,7 @@ It uses simple loops that periodically write to:
 to fight against the BC-250 firmware/SMU overwriting the voltage/frequency table under load.
 
 ⚠️ Disclaimer
+
 Use at your own risk. Undervolting / overclocking / messing with sysfs can cause system instability, crashes, data loss, or hardware damage.
+
 This script comes with no warranty of any kind.
