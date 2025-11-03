@@ -63,7 +63,7 @@ Installation
 
 Clone this repository and make the script executable:
 ```text
-git clone https://github.com/<your-user>/bc250-undervolt-control.git
+git clone https://github.com/sebastianhzt/bc250-undervolt-control.git
 cd bc250-undervolt-control
 ```
 ```text
