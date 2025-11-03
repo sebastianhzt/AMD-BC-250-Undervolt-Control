@@ -6,7 +6,7 @@ It uses simple loops that periodically write to:
 
 ```text
 /sys/class/drm/card1/device/pp_od_clk_voltage
-
+```
 to fight against the BC-250 firmware/SMU overwriting the voltage/frequency table under load.
 
 ⚠️ Disclaimer
