@@ -136,7 +136,7 @@ Typical expectations:
 Gaming mode:
 
 SCLK ≈ 2000 MHz
-VDDC around 0.9 V
+VDDC around 0.925 V
 Much lower temps and power than stock (e.g. ~140 W vs ~170 W)
 
 Power saving mode:
