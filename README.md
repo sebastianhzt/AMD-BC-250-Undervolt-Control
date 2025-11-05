@@ -25,7 +25,7 @@ ASCII-art TUI menu
 
 Three undervolt profiles, all applied in a loop:
 
-Gaming mode – 2000 MHz / 900 mV
+Gaming mode – 2000 MHz / 925 mV
 Balanced mode – 1500 MHz / 810 mV
 Power saving mode – 1000 MHz / 700 mV
 
@@ -90,7 +90,7 @@ You will see a menu like:
 ```text
  AMD BC-250 Undervolt Control
 
- [1] Gaming mode      (loop 2000 MHz / 900 mV)
+ [1] Gaming mode      (loop 2000 MHz / 925 mV)
  [2] Balanced mode    (loop 1500 MHz / 810 mV)
  [3] Power saving     (loop 1000 MHz / 700 mV)
  [4] Restore stock OD table (no loop)
@@ -99,7 +99,7 @@ You will see a menu like:
 Modes
 
 Gaming mode
-Starts a background loop that writes vc 0 2000 900 + c every 5 seconds.
+Starts a background loop that writes vc 0 2000 925 + c every 5 seconds.
 Good for full load: stable FPS, significantly lower power and temperature compared to stock.
 
 Balanced mode
@@ -137,7 +137,7 @@ Gaming mode:
 
 SCLK ≈ 2000 MHz
 VDDC around 0.9 V
-Much lower temps and power than stock (e.g. 130–140 W vs ~170 W)
+Much lower temps and power than stock (e.g. ~140 W vs ~170 W)
 
 Power saving mode:
 
@@ -148,7 +148,7 @@ Very low temps/power at desktop.
 Troubleshooting
 
 Option 2/3 “don’t work” or always look like gaming mode
-You probably have an old loop or systemd service still running (from a previous setup) that keeps writing 2000 / 900 in the background.
+You probably have an old loop or systemd service still running (from a previous setup) that keeps writing 2000 / 925 in the background.
 Make sure to stop/disable any bc250-* systemd services and kill old loops:
 ```text
 sudo pkill -f bc250-uv-mode-loop 2>/dev/null || true
@@ -183,7 +183,7 @@ dmesg for amdgpu GPU reset messages.
 
 If you hit instability:
 
-Use Gaming mode first (2000 / 900 is usually safe).
+Use Gaming mode first (2000 / 925 is usually safe).
 
 Avoid pushing voltage too low (e.g. 2000 / 880 mV proved unstable on some BC-250 units).
 
