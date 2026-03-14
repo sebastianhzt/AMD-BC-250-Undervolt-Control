@@ -6,6 +6,7 @@
 #  2) Balanced mode    - loop 1500 MHz / 810 mV
 #  3) Power saving     - loop 1000 MHz / 700 mV
 #  4) Restore stock    - reset OD table (no loop)
+#  5) Real-time monitor
 #
 # NOTE:
 # - This script assumes the BC-250 is exposed as /sys/class/drm/card1
@@ -13,6 +14,8 @@
 # - Use at your own risk. Undervolting/overclocking can cause instability or damage.
 
 DEV="/sys/class/drm/card1/device/pp_od_clk_voltage"
+CARD_PATH="/sys/class/drm/card1/device"
+DEBUG_PM_INFO="/sys/kernel/debug/dri/1/amdgpu_pm_info"
 PIDFILE="/run/bc250-uv-loop.pid"
 
 require_root() {
@@ -31,7 +34,6 @@ wait_for_device() {
 }
 
 stop_loop() {
-  # Kill by PID file if present
   if [ -f "$PIDFILE" ]; then
     PID=$(cat "$PIDFILE")
     if kill -0 "$PID" 2>/dev/null; then
@@ -41,7 +43,6 @@ stop_loop() {
     rm -f "$PIDFILE"
   fi
 
-  # Extra safety: kill any stray loop processes
   pkill -f "bc250-uv-mode-loop" 2>/dev/null || true
 }
 
@@ -49,13 +50,11 @@ start_loop() {
   local mhz="$1"
   local mv="$2"
 
-  # Stop any previous loop first
   stop_loop
 
   echo "Starting undervolt loop: ${mhz} MHz / ${mv} mV ..."
   (
     echo "BC-250 undervolt mode loop started: ${mhz} MHz / ${mv} mV" >&2
-    # Tag this process name so pkill can find it easily
     exec -a bc250-uv-mode-loop bash -c '
       DEV="'"$DEV"'"
       MHZ="'"$mhz"'"
@@ -97,6 +96,166 @@ restore_stock() {
   cat "$DEV"
 }
 
+find_hwmon_path() {
+  local h
+  for h in "$CARD_PATH"/hwmon/hwmon*; do
+    [ -d "$h" ] && echo "$h" && return
+  done
+}
+
+get_gpu_clock() {
+  local f
+
+  f="$CARD_PATH/freq1_input"
+  if [ -r "$f" ]; then
+    awk '{printf "%.0f MHz", $1/1000000}' "$f" 2>/dev/null
+    return
+  fi
+
+  f="$CARD_PATH/gt_cur_freq_mhz"
+  if [ -r "$f" ]; then
+    awk '{print $1 " MHz"}' "$f" 2>/dev/null
+    return
+  fi
+
+  f="$CARD_PATH/pp_dpm_sclk"
+  if [ -r "$f" ]; then
+    awk '/\*/ {gsub("Mhz","",$2); print $2 " MHz"}' "$f" 2>/dev/null
+    return
+  fi
+
+  echo "Not available"
+}
+
+get_mem_clock() {
+  local f
+
+  f="$CARD_PATH/freq2_input"
+  if [ -r "$f" ]; then
+    awk '{printf "%.0f MHz", $1/1000000}' "$f" 2>/dev/null
+    return
+  fi
+
+  f="$CARD_PATH/pp_dpm_mclk"
+  if [ -r "$f" ]; then
+    awk '/\*/ {gsub("Mhz","",$2); print $2 " MHz"}' "$f" 2>/dev/null
+    return
+  fi
+
+  echo "Not available"
+}
+
+get_gpu_voltage() {
+  local hwmon
+  hwmon=$(find_hwmon_path)
+
+  if [ -n "$hwmon" ] && [ -r "$hwmon/in0_input" ]; then
+    awk '{printf "%.0f mV", $1}' "$hwmon/in0_input" 2>/dev/null
+    return
+  fi
+
+  if [ -n "$hwmon" ] && [ -r "$hwmon/voltage1_input" ]; then
+    awk '{printf "%.0f mV", $1/1000}' "$hwmon/voltage1_input" 2>/dev/null
+    return
+  fi
+
+  if [ -r "$DEV" ]; then
+    awk '
+      /OD_VDDC_CURVE:/ {curve=1; next}
+      curve && /^[0-9]+:/ {
+        gsub(":", "", $1)
+        last_freq=$2
+        last_mv=$3
+      }
+      END {
+        if (last_mv != "") print last_mv " mV (OD target)"
+        else print "Not available"
+      }
+    ' "$DEV" 2>/dev/null
+    return
+  fi
+
+  echo "Not available"
+}
+
+get_gpu_load() {
+  local f
+
+  f="$CARD_PATH/gpu_busy_percent"
+  if [ -r "$f" ]; then
+    awk '{print $1 " %"}' "$f" 2>/dev/null
+    return
+  fi
+
+  echo "Not available"
+}
+
+get_gpu_power() {
+  local hwmon
+  hwmon=$(find_hwmon_path)
+
+  if [ -n "$hwmon" ] && [ -r "$hwmon/power1_average" ]; then
+    awk '{printf "%.2f W", $1/1000000}' "$hwmon/power1_average" 2>/dev/null
+    return
+  fi
+
+  if [ -n "$hwmon" ] && [ -r "$hwmon/power1_input" ]; then
+    awk '{printf "%.2f W", $1/1000000}' "$hwmon/power1_input" 2>/dev/null
+    return
+  fi
+
+  echo "Not available"
+}
+
+get_gpu_temp() {
+  local hwmon
+  hwmon=$(find_hwmon_path)
+
+  if [ -n "$hwmon" ] && [ -r "$hwmon/temp1_input" ]; then
+    awk '{printf "%.1f °C", $1/1000}' "$hwmon/temp1_input" 2>/dev/null
+    return
+  fi
+
+  echo "Not available"
+}
+
+show_realtime_status() {
+  echo "Opening real-time monitor..."
+  echo "Press Ctrl+C to return."
+  sleep 1
+
+  while true; do
+    clear
+    echo "========================================"
+    echo " AMD BC-250 Real-Time Monitor"
+    echo "========================================"
+    echo
+
+    if [ -f "$PIDFILE" ]; then
+      PID=$(cat "$PIDFILE")
+      if kill -0 "$PID" 2>/dev/null; then
+        echo "UV loop status : RUNNING (PID $PID)"
+      else
+        echo "UV loop status : STOPPED (stale PID file)"
+      fi
+    else
+      echo "UV loop status : STOPPED"
+    fi
+
+    echo
+    echo "[Live values]"
+    echo "GPU Clock   : $(get_gpu_clock)"
+    echo "Memory Clock: $(get_mem_clock)"
+    echo "Voltage     : $(get_gpu_voltage)"
+    echo "GPU Load    : $(get_gpu_load)"
+    echo "Power       : $(get_gpu_power)"
+    echo "Temp        : $(get_gpu_temp)"
+    echo
+    echo "Refreshing every 1 second..."
+    sleep 1
+  done
+}
+
 show_menu() {
   clear
   cat << 'BANNER'
@@ -108,8 +267,7 @@ show_menu() {
    \ \_______\ \_______\              |\________\____\_\  \ \_______\       
     \|_______|\|_______|               \|_______|\_________\|_______|       
                                                 \|_________|                
-                                                                            
-                                                                            
+
  ________  ________  ________   _________  ________  ________  ___          
 |\   ____\|\   __  \|\   ___  \|\___   ___\\   __  \|\   __  \|\  \         
 \ \  \___|\ \  \|\  \ \  \\ \  \|___ \  \_\ \  \|\  \ \  \|\  \ \  \        
@@ -117,7 +275,6 @@ show_menu() {
   \ \  \____\ \  \\\  \ \  \\ \  \   \ \  \ \ \  \\  \\ \  \\\  \ \  \____  
    \ \_______\ \_______\ \__\\ \__\   \ \__\ \ \__\\ _\\ \_______\ \_______\
     \|_______|\|_______|\|__| \|__|    \|__|  \|__|\|__|\|_______|\|_______|
-                                                                            
                                                                             
 BANNER
   echo
@@ -127,6 +284,7 @@ BANNER
   echo " [2] Balanced mode    (loop 1500 MHz / 810 mV)"
   echo " [3] Power saving     (loop 1000 MHz / 700 mV)"
   echo " [4] Restore stock OD table (no loop)"
+  echo " [5] Real-time monitor"
   echo " [0] Exit"
   echo
 }
@@ -154,6 +312,9 @@ main() {
       4)
         restore_stock
         read -rp "Press Enter to return to menu..."
+        ;;
+      5)
+        show_realtime_status
         ;;
       0)
         echo "Exiting..."
