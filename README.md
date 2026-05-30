@@ -1,89 +1,102 @@
 # AMD BC-250 Undervolt Control
 
+Small Bash menu to apply undervolt profiles to the AMD BC-250 GPU under Linux
+using the `amdgpu` driver and OverDrive.
 
-# Tested on Fedora 43
+Tested on Fedora/Bazzite systems with the BC-250 exposed as `card1`.
 
+## Warning
 
-Small Bash menu to control undervolt profiles for the AMD BC-250 GPU under Linux (using the `amdgpu` driver and OverDrive).
-
-It uses simple loops that periodically write to:
-
-```text
-/sys/class/drm/card1/device/pp_od_clk_voltage
-````
-
-to fight against the BC-250 firmware/SMU overwriting the voltage/frequency table under load.
-
-⚠️ Disclaimer
-
-Use at your own risk. Undervolting / overclocking / messing with sysfs can cause system instability, crashes, data loss, or hardware damage.
+Use at your own risk. Undervolting, overclocking, and writing directly to
+`sysfs` can cause instability, crashes, data loss, overheating, or hardware
+damage.
 
 This script comes with no warranty of any kind.
 
-Features
+The BC-250 can behave differently from normal desktop GPUs. On some cards,
+resetting the OverDrive table with `echo r` does not fully restore the original
+dynamic stock boost behavior. It may keep the last manual SCLK/VDDC point, such
+as `1000 MHz`, `1500 MHz`, or another value previously applied.
 
-ASCII-art TUI menu
+## Features
 
-Three undervolt profiles, all applied in a loop:
+- ASCII-art TUI menu.
+- Three undervolt profiles, each applied in a background loop.
+- Stop-loop option that only stops the background writer.
+- Reset OverDrive table option, documented as an `amdgpu` reset and not as a
+  guaranteed stock restore.
+- Real-time GPU monitor integrated in the script.
+- Self-contained: one script, `bc250-control.sh`.
 
-Gaming mode – 2000 MHz / 925 mV
-Balanced mode – 1500 MHz / 810 mV
-Power saving mode – 1000 MHz / 700 mV
-
-Restore stock option (stop loops + reset OverDrive table).
-
-Real-time GPU monitor integrated in the script.
-
-Self-contained: only one script (bc250-control.sh).
-
-Requirements
-
-Linux with the amdgpu driver.
-
-An AMD BC-250 (or compatible) card exposed as card1:
+## Profiles
 
 ```text
-ls /sys/class/drm | grep card
+Gaming mode      2000 MHz / 925 mV
+Balanced mode    1500 MHz / 810 mV
+Power saving     1000 MHz / 700 mV
 ```
 
-# should show something like: card0  card1
+Each profile periodically writes to:
 
-OverDrive/PP features enabled for amdgpu, e.g. kernel parameter:
+```text
+/sys/class/drm/card1/device/pp_od_clk_voltage
+```
+
+This loop helps fight cases where the BC-250 firmware/SMU overwrites the
+voltage/frequency table under load.
+
+## Requirements
+
+- Linux with the `amdgpu` driver.
+- AMD BC-250 or compatible card exposed as `card1`.
+- OverDrive/PP features enabled for `amdgpu`, for example:
 
 ```text
 amdgpu.ppfeaturemask=0xffffffff
 ```
 
-You can add that to your GRUB/boot loader and check with:
+You can check your kernel command line with:
 
 ```text
 cat /proc/cmdline | tr ' ' '\n' | grep amdgpu.ppfeaturemask
 ```
 
-bash, sudo, and access to /sys/class/drm/card1/device/pp_od_clk_voltage.
+You also need `bash`, `sudo`, and write access to:
 
-If your BC-250 is not card1, edit the DEV=... line at the top of the script.
+```text
+/sys/class/drm/card1/device/pp_od_clk_voltage
+```
 
-Installation
+If your BC-250 is not `card1`, edit these variables at the top of the script:
 
-Clone this repository and make the script executable:
+```bash
+DEV="/sys/class/drm/card1/device/pp_od_clk_voltage"
+CARD_PATH="/sys/class/drm/card1/device"
+DEBUG_PM_INFO="/sys/kernel/debug/dri/1/amdgpu_pm_info"
+```
+
+## Installation
+
+Clone the repository and enter the directory:
 
 ```text
 git clone https://github.com/sebastianhzt/AMD-BC-250-Undervolt-Control.git
 cd AMD-BC-250-Undervolt-Control
 ```
 
+Make the script executable:
+
 ```text
 chmod +x bc250-control.sh
 ```
 
-You can optionally copy it somewhere on your $PATH:
+You can optionally copy it somewhere on your `$PATH`:
 
 ```text
 sudo cp bc250-control.sh /usr/local/sbin/
 ```
 
-Usage
+## Usage
 
 Run the script with sudo:
 
@@ -91,132 +104,176 @@ Run the script with sudo:
 sudo ./bc250-control.sh
 ```
 
-# or, if copied to /usr/local/sbin:
+If the file is not executable yet, you can run it directly with Bash:
+
+```text
+sudo bash ./bc250-control.sh
+```
+
+If copied to `/usr/local/sbin`:
 
 ```text
 sudo bc250-control.sh
 ```
 
-You will see a menu like:
+The menu looks like this:
 
 ```text
- AMD BC-250 Undervolt Control
+AMD BC-250 Undervolt Control
 
- [1] Gaming mode      (loop 2000 MHz / 925 mV)
- [2] Balanced mode    (loop 1500 MHz / 810 mV)
- [3] Power saving     (loop 1000 MHz / 700 mV)
- [4] Restore stock OD table (no loop)
- [5] Real-time monitor
- [0] Exit
+[1] Gaming mode      (loop 2000 MHz / 925 mV)
+[2] Balanced mode    (loop 1500 MHz / 810 mV)
+[3] Power saving     (loop 1000 MHz / 700 mV)
+[4] Stop undervolt loop only
+[5] Reset OD table (not guaranteed stock on BC-250)
+[6] Real-time monitor
+[0] Exit
 ```
 
-Modes
+## Menu Options
 
-Gaming mode
-Starts a background loop that writes vc 0 2000 925 + c every 5 seconds.
-Good for full load: stable FPS, significantly lower power and temperature compared to stock.
+### Gaming mode
 
-Balanced mode
-Starts a loop at 1500 MHz / 810 mV.
-Useful for lighter gaming or compute with lower power draw.
+Starts a background loop that writes:
 
-Power saving mode
-Starts a loop at 1000 MHz / 700 mV.
-Good for desktop / idle / light tasks.
+```text
+vc 0 2000 925
+c
+```
 
-Restore stock
-Stops any running loop and writes:
+every 5 seconds.
+
+### Balanced mode
+
+Starts a background loop at `1500 MHz / 810 mV`.
+
+### Power saving mode
+
+Starts a background loop at `1000 MHz / 700 mV`.
+
+### Stop undervolt loop only
+
+Stops the background undervolt loop and removes the PID file. It does not reset
+the OverDrive table and does not write new clock or voltage values.
+
+Use this when you only want to stop the script from continuing to write values.
+
+### Reset OD table
+
+Stops the loop, writes:
 
 ```text
 echo r > /sys/class/drm/card1/device/pp_od_clk_voltage
 ```
 
-to reset the OverDrive table to factory values.
+and asks `amdgpu` to return to automatic DPM selection:
 
-Real-time monitor
-Displays live GPU statistics directly inside the script, refreshing every second.
+```text
+echo auto > /sys/class/drm/card1/device/power_dpm_force_performance_level
+```
 
-The monitor shows:
+Important: on some BC-250 cards, this does not fully restore the original stock
+boost behavior. It can leave the card at the last manual SCLK/VDDC point.
 
-GPU core clock
-Memory clock
-Voltage
-GPU load
-Power consumption
-Temperature
-Current undervolt loop status
+If you need to test true stock behavior, stop the loop, remove any OverDrive
+kernel parameter such as `amdgpu.ppfeaturemask=...`, then perform a full power
+off and cold boot before running the script again.
 
-Press **Ctrl+C** to exit the monitor and return to the main menu.
+### Real-time monitor
 
-Only one loop is active at a time. Switching modes automatically stops the previous loop and starts the new one.
+Displays live GPU statistics directly inside the script, refreshing every
+second:
 
-Monitoring
+- GPU core clock
+- Memory clock
+- Voltage
+- GPU load
+- Power consumption
+- Temperature
+- Current undervolt loop status
 
-You can monitor what’s actually happening using amdgpu_pm_info:
+Press `Ctrl+C` to exit the monitor and return to the main menu.
+
+## Monitoring
+
+You can monitor what is happening using `amdgpu_pm_info`:
 
 ```text
 sudo mount -t debugfs none /sys/kernel/debug 2>/dev/null || true
-```
-
-```text
 watch -n1 'sudo cat /sys/kernel/debug/dri/1/amdgpu_pm_info | egrep "SCLK|VDDC|GPU Load|GPU Temperature"'
 ```
 
-Typical expectations:
+You can also inspect the public `sysfs` values:
 
-Gaming mode:
+```text
+cat /sys/class/drm/card1/device/pp_od_clk_voltage
+cat /sys/class/drm/card1/device/pp_dpm_sclk
+cat /sys/class/drm/card1/device/power_dpm_force_performance_level
+```
 
-SCLK ≈ 2000 MHz
-VDDC around 0.925 V
-Much lower temps and power than stock (e.g. ~140 W vs ~170 W)
+## Troubleshooting
 
-Power saving mode:
+### Option 2 or 3 does not work, or the card always returns to another profile
 
-SCLK ≈ 1000 MHz
-VDDC ≈ 0.7 V
-Very low temps/power at desktop.
-
-Troubleshooting
-
-Option 2/3 “don’t work” or always look like gaming mode
-You probably have an old loop or systemd service still running (from a previous setup) that keeps writing 2000 / 925 in the background.
-Make sure to stop/disable any bc250-* systemd services and kill old loops:
+You may have an old loop or service still writing values in the background.
+Stop old loops and remove the PID file:
 
 ```text
 sudo pkill -f bc250-uv-mode-loop 2>/dev/null || true
 sudo rm -f /run/bc250-uv-loop.pid
 ```
 
-pp_od_clk_voltage doesn’t exist
+### Reset OD table does not restore stock boost
+
+This is known to happen on some BC-250 systems. The `amdgpu` reset command may
+keep the last manual point instead of rebuilding the original dynamic boost
+behavior.
+
+For true stock testing:
+
+1. Stop the undervolt loop.
+2. Remove or temporarily disable `amdgpu.ppfeaturemask=...`.
+3. Power off the system completely.
+4. Wait 30-60 seconds.
+5. Boot again and check `pp_od_clk_voltage` before running this script.
+
+### `pp_od_clk_voltage` does not exist
+
 Check that:
 
-You’re using the amdgpu driver.
+- You are using the `amdgpu` driver.
+- OverDrive/PP features are enabled.
+- The card really is `card1`.
 
-`amdgpu.ppfeaturemask=0xffffffff` (or similar) is applied.
-
-The card really is card1 (or adjust DEV= in the script).
-
-Card appears as card0 instead of card1
-Edit the script:
+List DRM cards with:
 
 ```text
-DEV="/sys/class/drm/card0/device/pp_od_clk_voltage"
+ls /sys/class/drm | grep card
 ```
 
-# Safety notes
+### Card appears as `card0` instead of `card1`
 
-This script was designed and tested specifically for AMD BC-250 “mining” cards under Linux.
+Edit the script variables:
 
-Other GPUs / BIOSes may expose different OverDrive behavior or ranges.
+```bash
+DEV="/sys/class/drm/card0/device/pp_od_clk_voltage"
+CARD_PATH="/sys/class/drm/card0/device"
+DEBUG_PM_INFO="/sys/kernel/debug/dri/0/amdgpu_pm_info"
+```
+
+## Safety Notes
+
+This script was designed for AMD BC-250 mining cards under Linux.
+
+Other GPUs, BIOS versions, and kernel versions may expose different OverDrive
+behavior or different safe voltage ranges.
 
 Always monitor:
 
-Temperatures
-Stability (no crashes, no artifacts)
-dmesg for amdgpu GPU reset messages.
+- Temperatures
+- Power draw
+- Stability, crashes, or artifacts
+- `dmesg` for `amdgpu` GPU reset messages
 
-If you hit instability:
-
-Use Gaming mode first (2000 / 925 is usually safe).
-
-Avoid pushing voltage too low (e.g. 2000 / 880 mV proved unstable on some BC-250 units).
+If the GPU becomes unstable or overheats, stop the load immediately and return
+to a known stable profile.
