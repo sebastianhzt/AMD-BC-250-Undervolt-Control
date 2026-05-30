@@ -5,8 +5,9 @@
 #  1) Gaming mode      - loop 2000 MHz / 925 mV
 #  2) Balanced mode    - loop 1500 MHz / 810 mV
 #  3) Power saving     - loop 1000 MHz / 700 mV
-#  4) Restore stock    - reset OD table (no loop)
-#  5) Real-time monitor
+#  4) Stop loop        - stop writing undervolt values
+#  5) Reset OD table   - amdgpu reset (may not restore stock boost on BC-250)
+#  6) Real-time monitor
 #
 # NOTE:
 # - This script assumes the BC-250 is exposed as /sys/class/drm/card1
@@ -87,10 +88,26 @@ power_saving_mode() {
   start_loop 1000 700
 }
 
-restore_stock() {
-  echo "[Restore stock] Stopping loops and resetting OD..."
+stop_undervolt_loop() {
+  echo "[Stop loop] Stopping undervolt loop only..."
+  stop_loop
+  echo "No undervolt loop is running now."
+  echo
+  echo "Current OD state:"
+  cat "$DEV"
+}
+
+reset_od_table() {
+  echo "[Reset OD table] Stopping loops and asking amdgpu to reset OD..."
+  echo
+  echo "Warning: on BC-250 this may keep the last manual SCLK/VDDC point."
+  echo "This is not guaranteed to restore the original dynamic stock boost table."
+  echo
   stop_loop
   echo "r" > "$DEV" 2>/dev/null
+  if [ -w "$CARD_PATH/power_dpm_force_performance_level" ]; then
+    echo "auto" > "$CARD_PATH/power_dpm_force_performance_level" 2>/dev/null || true
+  fi
   sleep 1
   echo "Current OD state:"
   cat "$DEV"
@@ -283,8 +300,9 @@ BANNER
   echo " [1] Gaming mode      (loop 2000 MHz / 925 mV)"
   echo " [2] Balanced mode    (loop 1500 MHz / 810 mV)"
   echo " [3] Power saving     (loop 1000 MHz / 700 mV)"
-  echo " [4] Restore stock OD table (no loop)"
-  echo " [5] Real-time monitor"
+  echo " [4] Stop undervolt loop only"
+  echo " [5] Reset OD table (not guaranteed stock on BC-250)"
+  echo " [6] Real-time monitor"
   echo " [0] Exit"
   echo
 }
@@ -310,10 +328,14 @@ main() {
         read -rp "Press Enter to return to menu..."
         ;;
       4)
-        restore_stock
+        stop_undervolt_loop
         read -rp "Press Enter to return to menu..."
         ;;
       5)
+        reset_od_table
+        read -rp "Press Enter to return to menu..."
+        ;;
+      6)
         show_realtime_status
         ;;
       0)
