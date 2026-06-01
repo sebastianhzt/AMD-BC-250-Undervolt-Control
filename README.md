@@ -6,7 +6,7 @@ using the `amdgpu` driver and OverDrive.
 Tested on Fedora/Bazzite systems with the BC-250 exposed as `card1`. The tools
 default to `card1`, but can target another DRM card such as `card0`.
 
-## Warning
+## ⚠️ Warning
 
 Use at your own risk. Undervolting, overclocking, and writing directly to
 `sysfs` can cause instability, crashes, data loss, overheating, or hardware
@@ -19,7 +19,7 @@ resetting the OverDrive table with `echo r` does not fully restore the original
 dynamic stock boost behavior. It may keep the last manual SCLK/VDDC point, such
 as `1000 MHz`, `1500 MHz`, or another value previously applied.
 
-## Features
+## ✨ Features
 
 - ASCII-art TUI menu.
 - GTK graphical control panel.
@@ -30,7 +30,7 @@ as `1000 MHz`, `1500 MHz`, or another value previously applied.
 - Real-time GPU monitor integrated in the script.
 - Terminal mode is self-contained in `bc250-control.sh`.
 
-## Screenshots
+## 🖼️ Screenshots
 
 ### Dark theme
 
@@ -56,7 +56,7 @@ as `1000 MHz`, `1500 MHz`, or another value previously applied.
   <img src="assets/Custom.png" alt="BC-250 Control Center custom wallpaper theme" width="900">
 </p>
 
-## Profiles
+## 🎮 Profiles
 
 ```text
 Gaming mode      2000 MHz / 925 mV
@@ -74,7 +74,7 @@ default that is:
 This loop helps fight cases where the BC-250 firmware/SMU overwrites the
 voltage/frequency table under load.
 
-## Requirements
+## 📦 Requirements
 
 - Linux with the `amdgpu` driver.
 - AMD BC-250 or compatible card exposed as a Linux DRM card such as `card0` or
@@ -113,7 +113,7 @@ Terminal example:
 sudo ./bc250-control.sh --card card0
 ```
 
-## GUI Dependencies
+## 🖥️ GUI Dependencies
 
 The graphical interface uses Python and GTK 3 through PyGObject.
 
@@ -152,7 +152,7 @@ The rule is installed to `/etc/polkit-1/rules.d/49-bc250-control.rules` and uses
 first password prompt. The GUI still shows its own confirmation dialog before
 applying a tuning profile.
 
-## Installation
+## 🚀 Installation
 
 Clone the repository and enter the directory:
 
@@ -188,7 +188,7 @@ For unattended setup:
 ./install-dependencies.sh --yes
 ```
 
-## GUI Usage
+## 🧭 GUI Usage
 
 Run the graphical control panel:
 
@@ -237,7 +237,7 @@ If your BC-250 is exposed as another DRM card, launch the GUI with:
 BC250_CARD=card0 ./bc250-control-gui.py
 ```
 
-## Terminal Usage
+## 🧰 Terminal Usage
 
 Run the script with sudo:
 
@@ -277,7 +277,7 @@ AMD BC-250 Undervolt Control
 [0] Exit
 ```
 
-## Menu Options
+## 📋 Menu Options
 
 ### Gaming mode
 
@@ -341,7 +341,7 @@ second:
 
 Press `Ctrl+C` to exit the monitor and return to the main menu.
 
-## GitHub Release Builds
+## 🏷️ GitHub Release Builds
 
 Release artifacts can be generated with:
 
@@ -382,7 +382,7 @@ For Polkit compatibility, the AppImage copies `bc250-control-helper.sh` to:
 That gives Polkit a stable helper path to authorize, instead of the temporary
 mount path used by AppImage.
 
-## Monitoring
+## 📊 Monitoring
 
 You can monitor what is happening using `amdgpu_pm_info`:
 
@@ -399,7 +399,7 @@ cat /sys/class/drm/card1/device/pp_dpm_sclk
 cat /sys/class/drm/card1/device/power_dpm_force_performance_level
 ```
 
-## Troubleshooting
+## 🛠️ Troubleshooting
 
 ### Option 2 or 3 does not work, or the card always returns to another profile
 
@@ -448,7 +448,7 @@ BC250_CARD=card0 ./bc250-control-gui.py
 sudo ./bc250-control.sh --card card0
 ```
 
-## Safety Notes
+## 🔥 Safety Notes
 
 This script was designed for AMD BC-250 mining cards under Linux.
 
