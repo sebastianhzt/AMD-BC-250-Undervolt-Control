@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+
+set -eu
+
+APPDIR="$(readlink -f "$(dirname "$0")")"
+APP_BIN="$APPDIR/usr/bin"
+DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+STATE_DIR="$DATA_HOME/bc250-control"
+HELPER_SRC="$APP_BIN/bc250-control-helper.sh"
+HELPER_DST="$STATE_DIR/bc250-control-helper.sh"
+POLKIT_INSTALL_SRC="$APP_BIN/install-polkit-policy.sh"
+POLKIT_INSTALL_DST="$STATE_DIR/install-polkit-policy.sh"
+DEPS_INSTALL_SRC="$APP_BIN/install-dependencies.sh"
+DEPS_INSTALL_DST="$STATE_DIR/install-dependencies.sh"
+
+mkdir -p "$STATE_DIR"
+
+install_if_changed() {
+  local src="$1"
+  local dst="$2"
+
+  if [ ! -f "$dst" ] || ! cmp -s "$src" "$dst"; then
+    install -m 0755 "$src" "$dst"
+  fi
+}
+
+install_if_changed "$HELPER_SRC" "$HELPER_DST"
+install_if_changed "$POLKIT_INSTALL_SRC" "$POLKIT_INSTALL_DST"
+install_if_changed "$DEPS_INSTALL_SRC" "$DEPS_INSTALL_DST"
+
+export BC250_HELPER="$HELPER_DST"
+
+gtk_ready() {
+  python3 - <<'PY' >/dev/null 2>&1
+import gi
+gi.require_version("Gdk", "3.0")
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gdk, Gtk
+PY
+}
+
+open_setup_terminal() {
+  local command="$DEPS_INSTALL_DST"
+
+  if command -v x-terminal-emulator >/dev/null 2>&1; then
+    x-terminal-emulator -e "$command"
+    return 0
+  fi
+  if command -v gnome-terminal >/dev/null 2>&1; then
+    gnome-terminal -- "$command"
+    return 0
+  fi
+  if command -v konsole >/dev/null 2>&1; then
+    konsole -e "$command"
+    return 0
+  fi
+  if command -v xterm >/dev/null 2>&1; then
+    xterm -e "$command"
+    return 0
+  fi
+
+  return 1
+}
+
+if ! gtk_ready || ! command -v pkexec >/dev/null 2>&1; then
+  echo "GTK/PyGObject or Polkit is missing. Starting dependency setup..."
+  if open_setup_terminal; then
+    exit 0
+  fi
+
+  echo "Could not open a terminal automatically."
+  echo "Run this command manually:"
+  echo "  $DEPS_INSTALL_DST"
+  exit 1
+fi
+
+exec python3 "$APP_BIN/bc250-control-gui.py" "$@"

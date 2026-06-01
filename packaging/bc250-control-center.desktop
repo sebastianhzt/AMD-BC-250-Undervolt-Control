@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=BC-250 Control Center
+Comment=GPU tuning control panel for AMD BC-250
+Exec=bc250-control-center
+Icon=bc250-control
+Terminal=false
+Categories=System;Settings;Utility;
