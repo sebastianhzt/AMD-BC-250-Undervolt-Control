@@ -30,6 +30,32 @@ as `1000 MHz`, `1500 MHz`, or another value previously applied.
 - Real-time GPU monitor integrated in the script.
 - Terminal mode is self-contained in `bc250-control.sh`.
 
+## Screenshots
+
+### Dark theme
+
+<p align="center">
+  <img src="assets/dark.png" alt="BC-250 Control Center dark theme" width="900">
+</p>
+
+### Light theme
+
+<p align="center">
+  <img src="assets/light.png" alt="BC-250 Control Center light theme" width="900">
+</p>
+
+### OLED theme
+
+<p align="center">
+  <img src="assets/OLED.png" alt="BC-250 Control Center OLED theme" width="900">
+</p>
+
+### Custom wallpaper theme
+
+<p align="center">
+  <img src="assets/Custom.png" alt="BC-250 Control Center custom wallpaper theme" width="900">
+</p>
+
 ## Profiles
 
 ```text
