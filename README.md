@@ -1,5 +1,11 @@
 # AMD BC-250 Undervolt Control
 
+> [!IMPORTANT]
+> **This repository is archived and no longer maintained.**
+> For continued development and support, use
+> [movacx/bc250-control-center](https://github.com/movacx/bc250-control-center)
+> instead.
+
 Small Bash menu to apply undervolt profiles to the AMD BC-250 GPU under Linux
 using the `amdgpu` driver and OverDrive.
 
